@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Math Blast Game</title>
+<style>
+ body {
+   font-family: system-ui, sans-serif;
+   background: linear-gradient(135deg, #fef9c3 0%, #fcd34d 100%);
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   height: 100vh;
+   margin: 0;
+ }
+ h2 { color: #b45309; text-shadow: 2px 2px #f59e0b; }
+ .game-box {
+   background: #fff7d6;
+   border: 3px solid #fbbf24;
+   border-radius: 16px;
+   padding: 25px;
+   width: 350px;
+   text-align: center;
+   box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+   position: relative;
+ }
+ .question {
+   font-size: 1.6rem;
+   margin-bottom: 15px;
+   font-weight: bold;
+ }
+ input {
+   width: 140px;
+   padding: 10px;
+   font-size: 1.1rem;
+   margin-bottom: 15px;
+   border-radius: 8px;
+   border: 2px solid #f59e0b;
+   text-align: center;
+ }
+ button {
+   background: #f59e0b;
+   color: white;
+   border: none;
+   padding: 10px 18px;
+   border-radius: 10px;
+   cursor: pointer;
+   font-size: 1.1rem;
+   transition: 0.2s;
+ }
+ button:hover { background: #d97706; transform: scale(1.05); }
+ .score {
+   margin-top: 12px;
+   font-weight: bold;
+   color: #b45309;
+   font-size: 1.1rem;
+ }
+ .timer {
+   position: absolute;
+   top: 10px;
+   right: 15px;
+   font-weight: bold;
+   color: #b45309;
+   font-size: 1rem;
+ }
+</style>
+</head>
+<body>
+<h2>💥 Math Blast Game</h2>
+<div class="game-box">
+  <div class="timer" id="timer">Time: 30</div>
+  <div id="question" class="question">0 + 0 = ?</div>
+  <input type="number" id="answer" placeholder="Your answer" /> <br>
+  <button onclick="checkAnswer()">Blast!</button>
+  <div id="scoreBox" class="score">Score: 0</div>
+</div>
+<script>
+let num1, num2, correctAnswer;
+let score = 0;
+let timeLeft = 30;
+let timer;
+
+function generateQuestion() {
+  num1 = Math.floor(Math.random() * 20) + 1;
+  num2 = Math.floor(Math.random() * 20) + 1;
+  const operators = ["+", "-", "x"];
+  const op = operators[Math.floor(Math.random() * operators.length)];
+
+  if (op === "+") correctAnswer = num1 + num2;
+  if (op === "-") correctAnswer = num1 - num2;
+  if (op === "x") correctAnswer = num1 * num2;
+
+  document.getElementById("question").innerText = `${num1} ${op} ${num2} = ?`;
+}
+
+function checkAnswer() {
+  const userAnswer = parseInt(document.getElementById("answer").value);
+  if (isNaN(userAnswer)) return alert("Enter a number!");
+
+  if (userAnswer === correctAnswer) {
+    score++;
+    explodeAnimation();
+  } else {
+    shakeAnimation();
+  }
+
+  document.getElementById("scoreBox").innerText = `Score: ${score}`;
+  document.getElementById("answer").value = "";
+  generateQuestion();
+}
+
+function explodeAnimation() {
+  const box = document.querySelector('.game-box');
+  box.style.background = '#bef264';
+  setTimeout(() => box.style.background = '#fff7d6', 200);
+}
+
+function shakeAnimation() {
+  const box = document.querySelector('.game-box');
+  box.style.transform = 'translateX(-5px)';
+  setTimeout(() => box.style.transform = 'translateX(5px)', 100);
+  setTimeout(() => box.style.transform = 'translateX(0)', 200);
+}
+
+function startTimer() {
+  timer = setInterval(() => {
+    timeLeft--;
+    document.getElementById('timer').innerText = `Time: ${timeLeft}`;
+    if(timeLeft <= 0){
+      clearInterval(timer);
+      alert(`⏱️ Time's up! Your final score: ${score}`);
+      score = 0;
+      timeLeft = 30;
+      document.getElementById('scoreBox').innerText = `Score: ${score}`;
+      generateQuestion();
+      startTimer();
+    }
+  }, 1000);
+}
+
+generateQuestion();
+startTimer();
+</script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Binary Builder</title>
+
+<!-- ✅ Embedded CSS -->
+<style>
+html,body{margin:0;padding:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(135deg,#11998e 0%,#38ef7d 100%);min-height:100vh;display:grid;place-items:center;padding:24px}
+.game{width:min(100%,900px);background:#fff;border-radius:20px;padding:clamp(20px,4vw,36px);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+h1{margin:0 0 8px;color:#11998e;font-size:clamp(1.6rem,2vw + 1rem,2.4rem)}
+p.sub{margin:0;color:#456}
+.challenge{margin:18px 0 24px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;padding:14px 16px;border-radius:14px;font-weight:800;display:flex;align-items:center;gap:12px}
+.progress-wrap{height:10px;background:#e9eef3;border-radius:999px;overflow:hidden;flex:1}
+.progress{height:100%;width:0%;background:rgba(255, 255, 255, 0.533)}
+.wrap{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:760px){.wrap{grid-template-columns:1fr}}
+.panel{background:#f5f7fa;border-radius:16px;padding:18px}
+.bits{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.bit{position:relative;display:grid;place-items:center;padding:18px 12px;border-radius:12px;background:#eef4fa;border:2px dashed #c8d6e5;cursor:pointer;user-select:none;transition:.2s}
+.bit.on{background:#d1f5ea;border-style:solid}
+.bit strong{font-size:1.6rem}
+.bit small{position:absolute;bottom:6px;opacity:.7}
+.sum{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-weight:700;color:#345}
+.sum .val{color:#11998e}
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+button{padding:12px 14px;font-weight:800;border:none;border-radius:10px;cursor:pointer;transition:.2s}
+button:hover{transform:translateY(-1px)}
+.check{background:#11998e;color:#fff}
+.reset{background:#ff6b6b;color:#fff}
+.hint{background:#9b59b6;color:#fff}
+.skip{background:#f39c12;color:#fff}
+.feedback{display:none;margin-top:12px;padding:12px;border-radius:10px;font-weight:800}
+.feedback.show{display:block}
+.feedback.good{background:#d4edda;color:#155724}
+.feedback.bad{background:#f8d7da;color:#721c24}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;color:#456}
+.stat{background:#f0f4f8;padding:10px;border-radius:10px;text-align:center;font-weight:700}
+.stat strong{color:#11998e}
+.kbd{background:#f0f4f8;border:1px solid #dbe5ee;border-bottom-width:3px;border-radius:6px;padding:1px 6px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="game" role="application" aria-label="Binary Builder game">
+<h1>💡 Binary Builder</h1>
+<p class="sub">Toggle the <strong>bits</strong> (16, 8, 4, 2, 1) to equal the <strong>target number</strong>.</p>
+
+<div class="challenge" id="challenge" aria-live="polite">
+<span id="challengeText">Make the number <strong>3</strong> (binary <span class="kbd">00011</span>)</span>
+<div class="progress-wrap"><div class="progress" id="progress"></div></div>
+</div>
+
+<div class="wrap">
+<section class="panel" aria-label="Bits panel">
+<div class="bits" id="bits"></div>
+<div class="sum">Current total: <span class="val" id="current">0</span></div>
+<div class="sum">Current binary: <span class="val" id="currentBin">00000</span></div>
+<div class="controls" role="group" aria-label="Actions">
+<button class="check" id="check">✓ Check Answer</button>
+<button class="reset" id="reset">🔄 Reset</button>
+<button class="hint" id="hint">💡 Hint</button>
+<button class="skip" id="skip">⏭️ Skip</button>
+</div>
+<div class="feedback" id="feedback" aria-live="polite"></div>
+</section>
+
+<section class="panel" aria-label="How to play & stats">
+<h3>How to play</h3>
+<p>Click a bit tile to <em>toggle</em> it. Keyboard: 1–5 toggles bits, Enter = check, R reset, H hint.</p>
+<div class="stats">
+<div class="stat">Level <strong id="level">1</strong></div>
+<div class="stat">Score <strong id="score">0</strong></div>
+<div class="stat">Streak <strong id="streak">0</strong></div>
+<div class="stat">Attempts <strong id="attempts">0</strong></div>
+</div>
+<h3 style="margin-top:12px">Targets so far</h3>
+<p id="history" style="min-height:22px"></p>
+</section>
+</div>
+</div>
+
+<!-- ✅ Embedded JavaScript -->
+<script>
+// Data — target list (0–31 random)
+const TARGETS = Array.from({length: 20}, () => Math.floor(Math.random()*32));
+
+let level = 0, score = 0, streak = 0, attempts = 0;
+let bitValues = [16,8,4,2,1];
+let bits = [0,0,0,0,0];
+
+const bitsEl = document.getElementById('bits');
+const currentEl = document.getElementById('current');
+const currentBinEl = document.getElementById('currentBin');
+const challengeEl = document.getElementById('challengeText');
+const feedbackEl = document.getElementById('feedback');
+const progressEl = document.getElementById('progress');
+const levelEl = document.getElementById('level');
+const scoreEl = document.getElementById('score');
+const streakEl = document.getElementById('streak');
+const attemptsEl = document.getElementById('attempts');
+const historyEl = document.getElementById('history');
+
+function renderBits(){
+  bitsEl.innerHTML = '';
+  bitValues.forEach((v, i) => {
+    const div = document.createElement('div');
+    div.className = 'bit' + (bits[i] ? ' on' : '');
+    div.setAttribute('role','button');
+    div.setAttribute('tabindex','0');
+    div.setAttribute('aria-pressed', bits[i] ? 'true' : 'false');
+    div.title = `Toggle ${v} (key ${5-i})`;
+    div.innerHTML = `<strong>${v}</strong><small>bit ${5-i}</small>`;
+    div.onclick = () => toggleBit(i);
+    div.onkeydown = (e)=>{ if(e.key==='Enter'||e.key===' ') {e.preventDefault();toggleBit(i);} };
+    bitsEl.appendChild(div);
+  });
+  updateSums();
+}
+
+function toggleBit(i){ bits[i]=bits[i]?0:1; renderBits(); }
+function currentTotal(){ return bits.reduce((s,b,i)=>s+(b?bitValues[i]:0),0); }
+function toBinaryString(){ return bits.map(b=>b?1:0).join(''); }
+function updateSums(){ currentEl.textContent=currentTotal(); currentBinEl.textContent=toBinaryString(); }
+
+function loadChallenge(){
+  const target = TARGETS[level % TARGETS.length];
+  const bin = target.toString(2).padStart(5,'0');
+  challengeEl.innerHTML = `Make the number <strong>${target}</strong> (binary <span class="kbd">${bin}</span>)`;
+  levelEl.textContent = level + 1;
+  progressEl.style.width = `${(level / TARGETS.length) * 100}%`;
+}
+
+function reset(){
+  bits=[0,0,0,0,0]; attempts=0;
+  attemptsEl.textContent=attempts; feedbackEl.className='feedback';
+  renderBits();
+}
+
+function hint(){
+  const target=TARGETS[level%TARGETS.length];
+  const diff=target-currentTotal();
+  feedbackEl.className='feedback show';
+  feedbackEl.textContent = diff===0?"Spot on!":diff>0?`Add ${diff}`:`Remove ${Math.abs(diff)}`;
+}
+
+function check(){
+  const target = TARGETS[level % TARGETS.length];
+  const total = currentTotal();
+  attempts++; attemptsEl.textContent=attempts;
+
+  if(total===target){
+    const bonus = 100 + streak*50 - Math.max(0,(attempts-1))*20;
+    const gained = Math.max(50, bonus);
+    score+=gained; streak++;
+    scoreEl.textContent=score; streakEl.textContent=streak;
+    feedbackEl.className='feedback good show';
+    feedbackEl.textContent=`✅ Correct! ${toBinaryString()}₂ = ${total}. +${gained} pts`;
+    historyEl.innerHTML+=` <span class="kbd">${target.toString(2).padStart(5,'0')}</span>`;
+    setTimeout(()=>{level++; reset(); loadChallenge();},1200);
+  } else {
+    streak=0; streakEl.textContent=0;
+    feedbackEl.className='feedback bad show';
+    const diff=target-total;
+    feedbackEl.textContent = diff>0?`❌ ${diff} short`:`❌ ${Math.abs(diff)} over`;
+  }
+}
+
+function skip(){ streak=0; streakEl.textContent=0; level++; reset(); loadChallenge(); }
+
+addEventListener('keydown', e=>{
+  const k=e.key.toLowerCase();
+  if(k==='enter')check();
+  else if(k==='r')reset();
+  else if(k==='h')hint();
+  else if(k==='s')skip();
+  else if(/[1-5]/.test(k)){const i=4-(+k-1); toggleBit(i);}
+});
+
+window.onload=()=>{renderBits();loadChallenge();};
+document.getElementById('check').onclick=check;
+document.getElementById('reset').onclick=reset;
+document.getElementById('hint').onclick=hint;
+document.getElementById('skip').onclick=skip;
+</script>
+
+</body>
+</html>

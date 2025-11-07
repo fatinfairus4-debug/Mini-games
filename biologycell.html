@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cell Organelles Match Game</title>
+<style>
+ body {
+   font-family: system-ui, sans-serif;
+   background: #e6f4ea;
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   padding: 20px;
+ }
+ h2 {
+   color: #166534;
+ }
+ .board {
+   display: grid;
+   grid-template-columns: repeat(3, 140px);
+   gap: 15px;
+   margin-top: 20px;
+ }
+ .card {
+   background: #ffffff;
+   border: 2px solid #34d399;
+   border-radius: 10px;
+   padding: 12px;
+   cursor: pointer;
+   text-align: center;
+   height: 80px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-size: 0.95rem;
+   transition: 0.2s;
+ }
+ .card:hover {
+   background: #bbf7d0;
+ }
+ .card.correct {
+   background: #4ade80;
+   color: white;
+   border-color: #15803d;
+   pointer-events: none;
+ }
+ .info {
+   margin-top: 15px;
+   font-style: italic;
+   color: #14532d;
+ }
+ button {
+   margin-top: 15px;
+   background: #22c55e;
+   color: white;
+   border: none;
+   padding: 8px 14px;
+   border-radius: 8px;
+   cursor: pointer;
+   font-size: 1rem;
+ }
+ button:hover {
+   background: #15803d;
+ }
+</style>
+</head>
+<body>
+<h2>🧬 Biology: Match Cell Organelles!</h2>
+<p>Click the correct organelle for the given function</p>
+<p class="info" id="question">Function: Produces energy for the cell</p>
+
+<div class="board" id="board"></div>
+<button onclick="restart()">Restart</button>
+
+<script>
+const organelles = [
+ { name: "Mitochondria", function: "Produces energy for the cell" },
+ { name: "Nucleus", function: "Controls cell activities and contains DNA" },
+ { name: "Ribosome", function: "Makes proteins" },
+ { name: "Golgi Apparatus", function: "Packages and transports proteins" },
+ { name: "Cell Membrane", function: "Controls movement in/out of cell" },
+ { name: "Chloroplast", function: "Performs photosynthesis in plant cells" }
+];
+
+let current;
+
+function randomQuestion() {
+ current = organelles[Math.floor(Math.random() * organelles.length)];
+ document.getElementById("question").innerText = `Function: ${current.function}`;
+}
+
+function renderCards() {
+ const board = document.getElementById("board");
+ board.innerHTML = "";
+ organelles.forEach(o => {
+   const card = document.createElement("div");
+   card.className = "card";
+   card.innerText = o.name;
+   card.onclick = () => checkAnswer(o, card);
+   board.appendChild(card);
+ });
+}
+
+function checkAnswer(selected, card) {
+ if (selected.name === current.name) {
+   card.classList.add("correct");
+   setTimeout(() => {
+     alert("✅ Correct! Good job!");
+     restart();
+   }, 300);
+ } else {
+   alert("❌ Incorrect! Try again!");
+ }
+}
+
+function restart() {
+ renderCards();
+ randomQuestion();
+}
+
+restart();
+</script>
+</body>
+</html>
