@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Element Game (Chemistry)</title>
+    <style>
+        /* --- General Layout and Reset --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #e6f7ff; /* Light blue background */
+        }
+
+        #game-container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 90%;
+            max-width: 550px;
+        }
+
+        /* --- Scoreboard and Status --- */
+        #status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding: 10px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .score-info {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        #win-target {
+             color: #28a745; /* Green for target */
+        }
+
+        /* --- Question Area --- */
+        #question-prompt {
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        #target-property {
+            font-size: 3em;
+            margin-bottom: 30px;
+            font-weight: 700;
+            color: #dc3545; /* Red for the question property (Atomic Number) */
+        }
+
+        /* --- Options Grid --- */
+        #options-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .element-option {
+            padding: 18px 10px;
+            font-size: 1.5em;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 2px solid #b3e0ff;
+            background-color: #f0faff;
+            transition: background-color 0.2s, transform 0.1s;
+            user-select: none;
+        }
+
+        .element-option:hover:not(.disabled) {
+            background-color: #ccedff;
+            transform: scale(1.02);
+        }
+        
+        /* --- Feedback and Button --- */
+        #feedback {
+            font-size: 1.3em;
+            margin-top: 15px;
+            min-height: 1.3em;
+            font-weight: 700;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            background-color: #007bff; /* Blue for action */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        /* --- Game State Classes --- */
+        .correct { color: #28a745; }
+        .incorrect { color: #dc3545; }
+        
+        .correct-box { 
+            border: 4px solid #28a745 !important; 
+            background-color: #d4edda !important; 
+            pointer-events: none;
+        }
+        .incorrect-box {
+            border: 4px solid #dc3545 !important;
+            background-color: #f8d7da !important;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .disabled { pointer-events: none; }
+        
+        .win-screen {
+            font-size: 1.5em;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            animation: fadeIn 1s;
+        }
+        .win-screen { background-color: #d4edda; color: #155724; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>⚛️ Element Match Challenge</h1>
+        
+        <div id="status-bar">
+            <span class="score-info">Score: <span id="score">0</span></span>
+            <span class="score-info">Target: <span id="win-target">5</span> Correct</span>
+        </div>
+        
+        <div id="game-content">
+            <p id="question-prompt">Match the **Atomic Number** to the correct **Element Symbol**:</p>
+            <div id="target-property"></div>
+            <div id="options-container">
+                </div>
+            <div id="feedback"></div>
+            <button id="next-button" onclick="startGame()" disabled>Guess first!</button>
+        </div>
+        
+    </div>
+
+    <script>
+        // --- Initial DOM Element References (will be updated after game resets) ---
+        let targetPropertyDisplay = document.getElementById('target-property');
+        let optionsContainer = document.getElementById('options-container');
+        let feedbackDisplay = document.getElementById('feedback');
+        const scoreDisplay = document.getElementById('score'); 
+        let nextButton = document.getElementById('next-button');
+        const gameContent = document.getElementById('game-content');
+        
+        const WINNING_SCORE = 5;
+        let score = 0;
+        let correctElement = null; 
+        let gameActive = true; 
+
+        // Data for the game: Element Symbol and Atomic Number
+        const ELEMENTS = [
+            { symbol: "H", atomicNumber: 1, name: "Hydrogen" },
+            { symbol: "He", atomicNumber: 2, name: "Helium" },
+            { symbol: "C", atomicNumber: 6, name: "Carbon" },
+            { symbol: "N", atomicNumber: 7, name: "Nitrogen" },
+            { symbol: "O", atomicNumber: 8, name: "Oxygen" },
+            { symbol: "F", atomicNumber: 9, name: "Fluorine" },
+            { symbol: "Ne", atomicNumber: 10, name: "Neon" },
+            { symbol: "Na", atomicNumber: 11, name: "Sodium" },
+            { symbol: "Mg", atomicNumber: 12, name: "Magnesium" },
+            { symbol: "Cl", atomicNumber: 17, name: "Chlorine" },
+            { symbol: "K", atomicNumber: 19, name: "Potassium" },
+            { symbol: "Ca", atomicNumber: 20, name: "Calcium" }
+        ];
+
+        /* --- Utility Functions --- */
+        function getRandomElement(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+        
+        /**
+         * Re-initializes the game structure elements after the gameContent is replaced.
+         */
+        function reInitializeDOMReferences() {
+            targetPropertyDisplay = document.getElementById('target-property');
+            optionsContainer = document.getElementById('options-container');
+            feedbackDisplay = document.getElementById('feedback');
+            nextButton = document.getElementById('next-button');
+        }
+
+        /* --- Game Logic --- */
+
+        function startGame() {
+            if (!gameActive) {
+                // 1. Reset variables
+                score = 0;
+                gameActive = true;
+                scoreDisplay.textContent = score;
+
+                // 2. Rebuild the standard game board structure
+                gameContent.innerHTML = `
+                    <p id="question-prompt">Match the **Atomic Number** to the correct **Element Symbol**:</p>
+                    <div id="target-property"></div>
+                    <div id="options-container"></div>
+                    <div id="feedback"></div>
+                    <button id="next-button" onclick="startGame()" disabled>Guess first!</button>
+                `;
+                
+                // 3. IMPORTANT: Re-link JavaScript variables to the new elements
+                reInitializeDOMReferences();
+            }
+
+            // Standard start round logic
+            optionsContainer.innerHTML = '';
+            feedbackDisplay.textContent = '';
+            nextButton.disabled = true;
+            nextButton.textContent = "Guess first!";
+            
+            // Select and prepare options
+            correctElement = getRandomElement(ELEMENTS);
+            const incorrectElements = ELEMENTS.filter(e => e.symbol !== correctElement.symbol);
+            shuffleArray(incorrectElements); 
+            const incorrectOptions = incorrectElements.slice(0, 3);
+            const gameOptions = [correctElement, ...incorrectOptions];
+            shuffleArray(gameOptions);
+
+            // Display question and options
+            targetPropertyDisplay.textContent = correctElement.atomicNumber;
+            gameOptions.forEach(element => {
+                const box = document.createElement('div');
+                box.classList.add('element-option');
+                box.textContent = element.symbol;
+                box.dataset.atomicNumber = element.atomicNumber; 
+                box.onclick = checkGuess;
+                optionsContainer.appendChild(box);
+            });
+        }
+
+        function checkGuess(event) {
+            // Only allow guessing if the 'Next' button is disabled (meaning a guess hasn't been made yet)
+            if (!nextButton || !nextButton.disabled) return; 
+
+            const guessedAtomicNumber = parseInt(event.target.dataset.atomicNumber);
+            const allOptions = document.querySelectorAll('.element-option');
+            let isCorrect = (guessedAtomicNumber === correctElement.atomicNumber);
+
+            // Disable all options and show results
+            allOptions.forEach(box => {
+                box.classList.add('disabled');
+                box.onclick = null; 
+                
+                // Highlight the correct box
+                if (parseInt(box.dataset.atomicNumber) === correctElement.atomicNumber) {
+                    box.classList.add('correct-box');
+                }
+            });
+
+            if (isCorrect) {
+                score++;
+                feedbackDisplay.innerHTML = `✅ **Correct!** ${correctElement.symbol} is ${correctElement.name} (Atomic Number ${correctElement.atomicNumber}).`;
+                feedbackDisplay.className = 'correct';
+                // Ensure the correct box gets the visual style
+                event.target.classList.add('correct-box'); 
+            } else {
+                feedbackDisplay.innerHTML = `❌ **Wrong!** You chose ${event.target.textContent}. The correct answer was ${correctElement.symbol} (${correctElement.name}).`;
+                feedbackDisplay.className = 'incorrect';
+                event.target.classList.add('incorrect-box');
+            }
+            
+            scoreDisplay.textContent = score;
+            nextButton.disabled = false;
+            nextButton.textContent = "Next Element";
+            
+            checkGameEnd();
+        }
+
+        function checkGameEnd() {
+            if (score >= WINNING_SCORE) {
+                endGame(true);
+            }
+        }
+
+        function endGame(didWin) {
+            gameActive = false;
+            
+            // Clear the current game board
+            gameContent.innerHTML = ''; 
+
+            if (didWin) {
+                // Insert the win screen and a new "Play Again" button
+                gameContent.innerHTML = `
+                    <div class="win-screen">
+                        🎉 **YOU WIN!** 🎉<br>
+                        You correctly identified **${WINNING_SCORE}** elements!
+                    </div>
+                    <button id="next-button" onclick="startGame()">Play Again</button>
+                `;
+            }
+            
+            // IMPORTANT: Update the 'nextButton' variable to point to the new 'Play Again' button
+            nextButton = document.getElementById('next-button');
+        }
+
+        // Start the game when the page loads
+        window.onload = startGame;
+    </script>
+</body>
+</html>
